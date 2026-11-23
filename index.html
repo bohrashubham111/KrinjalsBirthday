@@ -66,7 +66,7 @@ button:hover{transform:translateY(-2px)}
     <div class="env-body"></div><div class="flap"></div><div class="seal">♥</div>
    </div>
    <button class="primary" id="openLetter">Open your birthday letter 💌</button>
-   <button class="soft" id="musicToggle" style="margin-top:12px">♫ Turn on soft background music</button>
+   <button class="soft" id="musicToggle" style="margin-top:12px">♫ Play birthday instrumental</button>
    <div class="footer">TAP TO OPEN YOUR LITTLE SURPRISE</div>
   </section>
 
@@ -96,33 +96,53 @@ button:hover{transform:translateY(-2px)}
 <script>
 const $=id=>document.getElementById(id);
 
-// Original, gentle instrumental-style melody made with soft synthesized notes.
+// A gentle instrumental "Happy Birthday" arrangement, synthesized in the browser.
 // Browsers require a user tap before audio can play.
 let audioCtx=null, musicOn=false, musicTimer=null, noteIndex=0;
-const melody=[523.25,659.25,783.99,659.25,587.33,698.46,880,783.99];
-const bass=[261.63,329.63,392.00,329.63];
-function playSoftNote(freq, start, duration, volume, type='sine'){
- const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
- osc.type=type; osc.frequency.setValueAtTime(freq,start);
+const beat=0.48;
+const birthdayPhrase=[
+ [261.63,1],[261.63,1],[293.66,2],[261.63,2],[349.23,2],[329.63,4],
+ [261.63,1],[261.63,1],[293.66,2],[261.63,2],[392.00,2],[349.23,4],
+ [261.63,1],[261.63,1],[523.25,2],[440.00,2],[349.23,2],[329.63,2],[293.66,4],
+ [466.16,1],[466.16,1],[440.00,2],[349.23,2],[392.00,2],[349.23,4]
+];
+const chords=[
+ [261.63,329.63,392.00],
+ [174.61,220.00,261.63],
+ [196.00,246.94,293.66],
+ [174.61,220.00,261.63]
+];
+function playSoftNote(freq,start,duration,volume,type='sine'){
+ const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+ osc.type=type;osc.frequency.setValueAtTime(freq,start);
  gain.gain.setValueAtTime(0.0001,start);
- gain.gain.exponentialRampToValueAtTime(volume,start+0.12);
+ gain.gain.exponentialRampToValueAtTime(volume,start+0.06);
  gain.gain.exponentialRampToValueAtTime(0.0001,start+duration);
- osc.connect(gain); gain.connect(audioCtx.destination);
- osc.start(start); osc.stop(start+duration+0.03);
+ osc.connect(gain);gain.connect(audioCtx.destination);
+ osc.start(start);osc.stop(start+duration+0.03);
 }
 function musicStep(){
  if(!musicOn)return;
- const now=audioCtx.currentTime, i=noteIndex++;
- playSoftNote(melody[i%melody.length],now,0.72,0.035,'sine');
- if(i%2===0) playSoftNote(bass[(i/2|0)%bass.length],now,1.15,0.018,'triangle');
+ const [freq,beats]=birthdayPhrase[noteIndex%birthdayPhrase.length];
+ const now=audioCtx.currentTime,duration=beats*beat*0.88;
+ if(freq>0){
+  playSoftNote(freq,now,duration,0.045,'sine');
+  playSoftNote(freq*2,now,duration*0.72,0.009,'triangle');
+  if(noteIndex%6===0){
+   const chord=chords[(noteIndex/6|0)%chords.length];
+   chord.forEach(tone=>playSoftNote(tone/2,now,beats*beat*1.8,0.008,'triangle'));
+  }
+ }
+ noteIndex++;
+ musicTimer=setTimeout(musicStep,beats*beat*1000);
 }
 async function toggleMusic(){
- if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+ if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
  await audioCtx.resume();
  musicOn=!musicOn;
  const b=$('musicToggle');
- if(musicOn){musicStep();musicTimer=setInterval(musicStep,760);b.textContent='♫ Pause background music'}
- else{clearInterval(musicTimer);b.textContent='♫ Turn on soft background music'}
+ if(musicOn){noteIndex=0;b.textContent='♫ Pause birthday music';musicStep()}
+ else{clearTimeout(musicTimer);b.textContent='♫ Play birthday instrumental'}
 }
 
 function show(from,to){$(from).classList.add('hidden');$(to).classList.remove('hidden')}
